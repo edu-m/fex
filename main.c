@@ -132,21 +132,26 @@ void print_menu(WINDOW *menu_win, int highlight) {
   werase(menu_win);
 
   for (int i = first; i < first + visible_count && i < n_choices; ++i) {
+    struct stat st;
+    stat(choices[i],&st);
     if ((highlight - 1) == i) {
       wattron(menu_win, A_REVERSE);
       mvwprintw(menu_win, y, x, "%s", choices[i]);
       wattroff(menu_win, A_REVERSE);
     } else {
-      mvwprintw(menu_win, y, x, "%s", choices[i]);
+      if ((st.st_mode & S_IFMT) == S_IFDIR)
+        mvwprintw(menu_win, y, x, "[%s]", choices[i]);
+      else
+        mvwprintw(menu_win, y, x, "%s", choices[i]);
     }
     ++y;
   }
   wrefresh(menu_win);
 }
 
-void error(char *what){
-	fprintf(stderr,"%s\n",what);
-	exit(EXIT_FAILURE);
+void error(char *what) {
+  fprintf(stderr, "%s\n", what);
+  exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv) {
@@ -155,17 +160,15 @@ int main(int argc, char **argv) {
   int choice = 0;
   int c;
   char info[1024];
-  if(argc < 2){
-  	load_directory(".");
-  }
-  else{
-      struct stat st;
-      if (stat(argv[1], &st) == 0 && S_ISDIR(st.st_mode)) {
-      	load_directory(argv[1]);
-      }
-      else{
-      	error("Cannot find selected directory");
-      }
+  if (argc < 2) {
+    load_directory(".");
+  } else {
+    struct stat st;
+    if (stat(argv[1], &st) == 0 && S_ISDIR(st.st_mode)) {
+      load_directory(argv[1]);
+    } else {
+      error("Cannot find selected directory");
+    }
   }
   initscr();
   clear();
