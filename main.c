@@ -1,12 +1,12 @@
 #include "xdg.h"
 #include <dirent.h>
 #include <ncurses.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 int startx = 0;
 int starty = 0;
@@ -91,7 +91,8 @@ void load_directory(const char *dirpath) {
   }
 
   while ((entry = readdir(dir)) != NULL) {
-    if (hide_hidden_files && entry->d_name[0] == '.' && strncmp(entry->d_name, "..", 2) != 0) {
+    if (hide_hidden_files && entry->d_name[0] == '.' &&
+        strncmp(entry->d_name, "..", 2) != 0) {
       continue;
     }
     char **temp = realloc(choices, (n_choices + 1) * sizeof(*choices));
@@ -120,12 +121,12 @@ void print_menu(WINDOW *menu_win, int highlight) {
   int visible_count = maxy - 2;
   int first;
 
-  if (n_choices<= visible_count) {
+  if (n_choices <= visible_count) {
     first = 0;
   } else {
     first = highlight - 1;
-    if (first > (n_choices) - visible_count)
-      first = (n_choices) - visible_count;
+    if (first > (n_choices)-visible_count)
+      first = (n_choices)-visible_count;
   }
 
   werase(menu_win);
@@ -142,15 +143,30 @@ void print_menu(WINDOW *menu_win, int highlight) {
   }
   wrefresh(menu_win);
 }
-int main(void) {
+
+void error(char *what){
+	fprintf(stderr,"%s\n",what);
+	exit(EXIT_FAILURE);
+}
+
+int main(int argc, char **argv) {
   WINDOW *menu_win;
   int highlight = 1;
   int choice = 0;
   int c;
   char info[1024];
-
-  load_directory(".");
-
+  if(argc < 2){
+  	load_directory(".");
+  }
+  else{
+      struct stat st;
+      if (stat(argv[1], &st) == 0 && S_ISDIR(st.st_mode)) {
+      	load_directory(argv[1]);
+      }
+      else{
+      	error("Cannot find selected directory");
+      }
+  }
   initscr();
   clear();
   noecho();
