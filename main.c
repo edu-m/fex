@@ -1,5 +1,6 @@
 #include "xdg.h"
 #include <dirent.h>
+#include <math.h>
 #include <ncurses.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -14,6 +15,17 @@ int starty = 0;
 char **choices = NULL;
 int n_choices = 0;
 bool hide_hidden_files = true;
+
+int max(int a, int b) { return a > b ? a : b; }
+
+int n_digits(int n) {
+  int ret = 1;
+  do {
+    n /= 10;
+    ++ret;
+  } while (n != 0);
+  return ret;
+}
 
 int is_text_file(const char *filepath) {
   char command[512];
@@ -73,6 +85,37 @@ void free_cbuf() {
   n_choices = 0;
 }
 
+void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
+  mvprintw(LINES - 1, 0, "f: ");
+  int c = 0;
+  int count = 0;
+  int i = 0;
+  int max_digits = n_digits(n_choices);
+  while (count < n_choices && c != 27 && c != 10 && c != 261 && c != 108 &&
+         n_digits(count) <= n_digits(n_choices)) {
+    clrtoeol();
+    refresh();
+    c = wgetch(menu_win);
+    if (c >= '0' && c <= '9') {
+      count *= pow(10, i++);
+      count += (c - 48);
+      if (count < n_choices) {
+        *highlight = count + 1;
+        if (i == max_digits - 1)
+          break;
+      } else
+        *highlight = n_choices + 1;
+    }
+    // else if (c == '0') {
+    //   *highlight = 1;
+    //   break;
+    // }
+    mvprintw(LINES - 1, 0, "f:%d", count);
+  }
+  clrtoeol();
+  refresh();
+}
+
 void load_directory(const char *dirpath) {
   DIR *dir;
   struct dirent *entry;
@@ -126,24 +169,38 @@ void print_menu(WINDOW *menu_win, int highlight) {
   } else {
     first = highlight - 1;
     if (first > (n_choices)-visible_count)
-      first = (n_choices)-visible_count;
+      first = (n_choices)-visible_count + 1;
   }
 
   werase(menu_win);
 
   for (int i = first; i < first + visible_count && i < n_choices; ++i) {
     struct stat st;
-    stat(choices[i],&st);
-    if ((highlight - 1) == i) {
-      wattron(menu_win, A_REVERSE);
-      mvwprintw(menu_win, y, x, "%s", choices[i]);
-      wattroff(menu_win, A_REVERSE);
-    } else {
-      if ((st.st_mode & S_IFMT) == S_IFDIR)
-        mvwprintw(menu_win, y, x, "[%s]", choices[i]);
-      else
-        mvwprintw(menu_win, y, x, "%s", choices[i]);
+    lstat(choices[i], &st);
+    const char *fmt;
+    switch (st.st_mode & S_IFMT) {
+    case S_IFLNK:
+      fmt = "%d\t| {%s}";
+      break;
+    case S_IFDIR:
+      fmt = "%d\t| [%s]";
+      break;
+    case S_IFCHR:
+      fmt = "%d\t| ..%s..";
+      break;
+    case S_IFBLK:
+      fmt = "%d\t| _%s_";
+      break;
+    default:
+      fmt = "%d\t| %s";
+      break;
     }
+    int is_highlighted = ((highlight - 1) == i);
+    if (is_highlighted)
+      wattron(menu_win, A_REVERSE);
+    mvwprintw(menu_win, y, x, fmt, i, choices[i]);
+    if (is_highlighted)
+      wattroff(menu_win, A_REVERSE);
     ++y;
   }
   wrefresh(menu_win);
@@ -193,27 +250,27 @@ int main(int argc, char **argv) {
     c = wgetch(menu_win);
     switch (c) {
     case KEY_UP:
-    case 107: // 'k'
+    case 'k': // 'k'
       if (highlight == 1)
         highlight = n_choices;
       else
         --highlight;
       break;
     case KEY_DOWN:
-    case 106: // 'j'
+    case 'j': // 'j'
       if (highlight == n_choices)
         highlight = 1;
       else
         ++highlight;
       break;
     case 260: // arrow left
-    case 104:
+    case 'h':
       load_directory("..");
       highlight = 1;
       memset(info, 0, sizeof(info));
       break;
     case 261:  // arrow right
-    case 108:  // l
+    case 'l':  // l
     case 10: { // enter
       struct stat st;
       if (stat(choices[highlight - 1], &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -221,7 +278,6 @@ int main(int argc, char **argv) {
         highlight = 1;
         memset(info, 0, sizeof(info));
       } else {
-        char command[256];
         if (is_text_file(choices[highlight - 1])) {
           char vim_cmd[512];
           endwin();
@@ -242,25 +298,23 @@ int main(int argc, char **argv) {
       }
       break;
     }
-    case 113: // 'q'
+    case 'q':
       choice = -1;
       break;
-    case 97: // 'a'
+    case 'a':
       hide_hidden_files = !hide_hidden_files;
       load_directory(".");
       refresh();
       break;
-    default: // just for debug!
-      mvprintw(LINES - 1, 0, "Character pressed is = %3d ('%c')", c, c);
-      refresh();
-      break;
+    case 'f':
+      handle_search(menu_win, n_choices - 1, &highlight);
     }
     print_menu(menu_win, highlight);
     if (choice != 0)
       break;
   }
 
-  clrtoeol();
+  // clrtoeol();
   refresh();
   endwin();
 
