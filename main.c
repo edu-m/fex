@@ -160,12 +160,12 @@ void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
       *highlight = n_choices + 1;
     } else if (strncmp(input_buffer, "gg", 2) == 0) {
       *highlight = 1;
-    }else if (strncmp(input_buffer, "vim", 3) == 0) {
+    } else if (strncmp(input_buffer, "vim", 3) == 0) {
       char vim_cmd[6];
       endwin();
       system("vim .");
       initscr();
-			break;
+      break;
     }
 
     else if (strncmp(input_buffer, "w", 1) == 0) {
@@ -397,7 +397,16 @@ int main(int argc, char **argv) {
       choice = -1;
       break;
     case 'a':
-      hide_hidden_files = !hide_hidden_files;
+      if (hide_hidden_files) {
+        hide_hidden_files = false;
+        load_directory(".");
+        refresh();
+        break;
+      }
+      int old_n_choices = n_choices;
+      if (highlight == old_n_choices - 1)
+        highlight = n_choices + 1;
+      hide_hidden_files = true;
       load_directory(".");
       refresh();
       break;
