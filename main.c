@@ -1,6 +1,6 @@
 #include "xdg.h"
+#include <ctype.h>
 #include <dirent.h>
-#include <math.h>
 #include <ncurses.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -76,6 +76,13 @@ void get_file_info(const char *pathname, char *result, size_t result_size) {
   }
 }
 
+int digits_only(const char *s)
+{
+    while (*s)
+        if (isdigit(*s++) == 0) return 0;
+    return 1;
+}
+
 void free_cbuf() {
   for (int i = 0; i < n_choices; i++) {
     free(choices[i]);
@@ -85,35 +92,51 @@ void free_cbuf() {
   n_choices = 0;
 }
 
+int n_digits(int n);
+
 void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
-  mvprintw(LINES - 1, 0, "f: ");
+  mvprintw(LINES - 1, 0, ": ");
   int c = 0;
   int count = 0;
-  int i = 0;
   int max_digits = n_digits(n_choices);
+  char input_buffer[max_digits + 1];
+  int i = 0;
+  input_buffer[0] = '\0';
+
   while (count < n_choices && c != 27 && c != 10 && c != 261 && c != 108 &&
          n_digits(count) <= n_digits(n_choices)) {
     clrtoeol();
     refresh();
     c = wgetch(menu_win);
-    if (c >= '0' && c <= '9') {
-      count *= pow(10, i++);
-      count += (c - 48);
+    if ((c == KEY_BACKSPACE || c == 127) && i > 0) {
+      i--;
+      input_buffer[i] = '\0';
+    } else if (c != 27 && c != 10 && c != 261 && c != 108) {
+      if (i < max_digits) {
+        input_buffer[i++] = (char)c;
+        input_buffer[i] = '\0';
+      }
+    }
+    mvprintw(LINES - 1, 0, ":%s", input_buffer);
+    refresh();
+    if (strncmp(input_buffer, "G", 1) == 0) {
+      *highlight = n_choices + 1;
+    } else if (strncmp(input_buffer, "gg", 2) == 0) {
+      *highlight = 1;
+    } else if(digits_only(input_buffer)){
+      count = atoi(input_buffer);
+
       if (count < n_choices) {
         *highlight = count + 1;
         if (i == max_digits - 1)
           break;
-      } else
+      } else {
         *highlight = n_choices + 1;
+      }
     }
-    // else if (c == '0') {
-    //   *highlight = 1;
-    //   break;
-    // }
-    mvprintw(LINES - 1, 0, "f:%d", count);
   }
   clrtoeol();
-  refresh();
+	refresh();
 }
 
 void load_directory(const char *dirpath) {
@@ -306,7 +329,7 @@ int main(int argc, char **argv) {
       load_directory(".");
       refresh();
       break;
-    case 'f':
+    case ':':
       handle_search(menu_win, n_choices - 1, &highlight);
     }
     print_menu(menu_win, highlight);
