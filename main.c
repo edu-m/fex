@@ -1,3 +1,20 @@
+// Copyright (c) 2025 Eduardo Meli
+/*
+This file is part of fex.
+
+fex is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+fex is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with fex.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "xdg.h"
 #include <ctype.h>
 #include <dirent.h>
@@ -76,11 +93,11 @@ void get_file_info(const char *pathname, char *result, size_t result_size) {
   }
 }
 
-int digits_only(const char *s)
-{
-    while (*s)
-        if (isdigit(*s++) == 0) return 0;
-    return 1;
+int digits_only(const char *s) {
+  while (*s)
+    if (isdigit(*s++) == 0)
+      return 0;
+  return 1;
 }
 
 void free_cbuf() {
@@ -123,7 +140,7 @@ void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
       *highlight = n_choices + 1;
     } else if (strncmp(input_buffer, "gg", 2) == 0) {
       *highlight = 1;
-    } else if(digits_only(input_buffer)){
+    } else if (digits_only(input_buffer)) {
       count = atoi(input_buffer);
 
       if (count < n_choices) {
@@ -136,7 +153,7 @@ void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
     }
   }
   clrtoeol();
-	refresh();
+  refresh();
 }
 
 void load_directory(const char *dirpath) {
@@ -337,7 +354,6 @@ int main(int argc, char **argv) {
       break;
   }
 
-  // clrtoeol();
   refresh();
   endwin();
 

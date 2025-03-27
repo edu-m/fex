@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Eduardo Meli
+# Released under GNU GPL 2.0 license. Refer to LICENSE or visit <http://www.gnu.org/licenses/>
 #!/bin/zsh
 
 gcc main.c xdg.c -lncurses -lm -ofex -Os -flto -ffunction-sections -fdata-sections -ffreestanding -fno-stack-protector -Wl,--build-id=none -fwrapv -fomit-frame-pointer -fno-asynchronous-unwind-tables -Wl,--gc-sections -fwhole-program -fno-math-errno -fno-exceptions -nodefaultlibs -lc -fsingle-precision-constant -fmerge-all-constants -fno-ident -fno-math-errno
