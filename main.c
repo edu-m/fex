@@ -113,24 +113,22 @@ void free_cbuf() {
 int n_digits(int n);
 
 void print_logo(WINDOW *menu_win) {
-	const char *logo[] = {
-			"      :::::::::: :::::::::: :::    :::",
-			"     :+:        :+:        :+:    :+: ",
-			"    +:+        +:+         +:+  +:+   ",
-			"   :#::+::#   +#++:++#     +#++:+     ",
-			"  +#+        +#+         +#+  +#+     ",
-			" #+#        #+#        #+#    #+#     ",
-			"###        ########## ###    ###      "
-	};
+  const char *logo[] = {"      :::::::::: :::::::::: :::    :::",
+                        "     :+:        :+:        :+:    :+: ",
+                        "    +:+        +:+         +:+  +:+   ",
+                        "   :#::+::#   +#++:++#     +#++:+     ",
+                        "  +#+        +#+         +#+  +#+     ",
+                        " #+#        #+#        #+#    #+#     ",
+                        "###        ########## ###    ###      "};
 
-	int n_lines = sizeof(logo) / sizeof(logo[0]);
-	int start_y = LINES / 4;
+  int n_lines = sizeof(logo) / sizeof(logo[0]);
+  int start_y = LINES / 4;
 
-	for (int i = 0; i < n_lines; i++) {
-			int line_len = strlen(logo[i]);
-			int start_x = (COLS - line_len) / 2;
-			mvwprintw(menu_win, start_y + i, start_x, "%s", logo[i]);
-	}
+  for (int i = 0; i < n_lines; i++) {
+    int line_len = strlen(logo[i]);
+    int start_x = (COLS - line_len) / 2;
+    mvwprintw(menu_win, start_y + i, start_x, "%s", logo[i]);
+  }
 }
 
 void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
@@ -138,7 +136,7 @@ void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
   int c = 0;
   int count = 0;
   int max_digits = n_digits(n_choices);
-  char input_buffer[max_digits + 1];
+  char input_buffer[32];
   int i = 0;
   input_buffer[0] = '\0';
 
@@ -151,7 +149,7 @@ void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
       i--;
       input_buffer[i] = '\0';
     } else if (c != 27 && c != 10 && c != 261 && c != 108) {
-      if (i < max_digits) {
+      if (i < 32) {
         input_buffer[i++] = (char)c;
         input_buffer[i] = '\0';
       }
@@ -162,16 +160,33 @@ void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
       *highlight = n_choices + 1;
     } else if (strncmp(input_buffer, "gg", 2) == 0) {
       *highlight = 1;
-    } else if (strncmp(input_buffer, "w", 1) == 0) {
-			clear();
-			int _s = -6;
-			wattron(menu_win, A_REVERSE);
-			mvwprintw(menu_win,LINES + _s--, 0, "%s", "This is free software, and you are welcome to redistribute it under certain conditions.\nThis program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;\nwithout even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\nSee the GNU General Public License for more details: <http://www.gnu.org/licenses/>");
-			mvwprintw(menu_win,LINES + _s--, 0, "%s", "This program comes with ABSOLUTELY NO WARRANTY;");
-			mvwprintw(menu_win,LINES + _s--, 0, "%s", "fex 1.0 Copyright (C) 2025 Eduardo Meli");
-			wattroff(menu_win, A_REVERSE);
-			print_logo(menu_win);
-		} else if (digits_only(input_buffer)) {
+    }else if (strncmp(input_buffer, "vim", 3) == 0) {
+      char vim_cmd[6];
+      endwin();
+      system("vim .");
+      initscr();
+			break;
+    }
+
+    else if (strncmp(input_buffer, "w", 1) == 0) {
+      clear();
+      int _s = -6;
+      wattron(menu_win, A_REVERSE);
+      mvwprintw(
+          menu_win, LINES + _s--, 0, "%s",
+          "This is free software, and you are welcome to redistribute it under "
+          "certain conditions.\nThis program is distributed in the hope that "
+          "it will be useful, but WITHOUT ANY WARRANTY;\nwithout even the "
+          "implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR "
+          "PURPOSE.\nSee the GNU General Public License for more details: "
+          "<http://www.gnu.org/licenses/>");
+      mvwprintw(menu_win, LINES + _s--, 0, "%s",
+                "This program comes with ABSOLUTELY NO WARRANTY;");
+      mvwprintw(menu_win, LINES + _s--, 0, "%s",
+                "fex 1.0 Copyright (C) 2025 Eduardo Meli");
+      wattroff(menu_win, A_REVERSE);
+      print_logo(menu_win);
+    } else if (digits_only(input_buffer)) {
       count = atoi(input_buffer);
 
       if (count < n_choices) {
