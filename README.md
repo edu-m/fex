@@ -11,6 +11,7 @@ The special character ':' will allow the user to enter a series of commands to n
 - w: will display the logo and a brief copyright notice
 - To quit from ':' mode, press the Escape button
 
+Hidden folders and files are by default not shown, you can toggle this option by pressing 'a'.
 To exit the program, simply type 'q'. To navigate through folders, you can either use the arrow keys or the 'hjkl' keys in vim style. To open a directory, simply press Enter after having selected it. If you open a text file, it will be opened with vim, anything else will be opened with your default application. Fex has a way to differentiate between file types:
 - Directories: [file]
 - Symlinks: {file}
