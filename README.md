@@ -1,6 +1,15 @@
 # fex
 a fast, minimalistic File EXplorer for linux written in C.
 
+# How to use
+The software, when opened, will display the current folder by default, but an arbitrary path can be specified as well.
+The special character ':' will allow the user to enter a series of commands to navigate or trigger a specific event, here is a comprehensive list of all of the currently implemented keywords:
+- gg + Enter: selects the first element of the directory
+- G + Enter: selects the last element of the directory
+- [0-9]+ + Enter* (any number n): will select the nth element, if available. If the selected number is too big, it will be interpreted as G. *Note that if the number inserted is sufficiently large, the program will not need the user to press Enter, and will simply jump to that selection
+- vim: will open vim in the current directory
+- w: will display the logo and a brief copyright notice
+
 # Why
 I wanted to experiment with a custom software for a fast, reliable, no-nonsense navigation between folders.
 The seamless integration with vim makes the experience especially satisfying for me, as I use vim quite often.
