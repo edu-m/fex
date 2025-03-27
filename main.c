@@ -112,6 +112,27 @@ void free_cbuf() {
 
 int n_digits(int n);
 
+void print_logo(WINDOW *menu_win) {
+	const char *logo[] = {
+			"      :::::::::: :::::::::: :::    :::",
+			"     :+:        :+:        :+:    :+: ",
+			"    +:+        +:+         +:+  +:+   ",
+			"   :#::+::#   +#++:++#     +#++:+     ",
+			"  +#+        +#+         +#+  +#+     ",
+			" #+#        #+#        #+#    #+#     ",
+			"###        ########## ###    ###      "
+	};
+
+	int n_lines = sizeof(logo) / sizeof(logo[0]);
+	int start_y = LINES / 4;
+
+	for (int i = 0; i < n_lines; i++) {
+			int line_len = strlen(logo[i]);
+			int start_x = (COLS - line_len) / 2;
+			mvwprintw(menu_win, start_y + i, start_x, "%s", logo[i]);
+	}
+}
+
 void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
   mvprintw(LINES - 1, 0, ": ");
   int c = 0;
@@ -141,7 +162,16 @@ void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
       *highlight = n_choices + 1;
     } else if (strncmp(input_buffer, "gg", 2) == 0) {
       *highlight = 1;
-    } else if (digits_only(input_buffer)) {
+    } else if (strncmp(input_buffer, "w", 1) == 0) {
+			clear();
+			int _s = -6;
+			wattron(menu_win, A_REVERSE);
+			mvwprintw(menu_win,LINES + _s--, 0, "%s", "This is free software, and you are welcome to redistribute it under certain conditions.\nThis program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;\nwithout even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\nSee the GNU General Public License for more details: <http://www.gnu.org/licenses/>");
+			mvwprintw(menu_win,LINES + _s--, 0, "%s", "This program comes with ABSOLUTELY NO WARRANTY;");
+			mvwprintw(menu_win,LINES + _s--, 0, "%s", "fex 1.0 Copyright (C) 2025 Eduardo Meli");
+			wattroff(menu_win, A_REVERSE);
+			print_logo(menu_win);
+		} else if (digits_only(input_buffer)) {
       count = atoi(input_buffer);
 
       if (count < n_choices) {
@@ -252,6 +282,14 @@ void error(char *what) {
   exit(EXIT_FAILURE);
 }
 
+void print_licensing(WINDOW *menu_win) {
+  const char *t0 = "fex 1.0 Copyright (C) 2025 Eduardo Meli";
+  const char *t1 = "for copyright details type `:w`.";
+  mvprintw(LINES - 3, COLS - strlen(t0), "%s", t0);
+  mvprintw(LINES - 4, COLS - strlen(t1), "%s", t1);
+  wrefresh(menu_win);
+}
+
 int main(int argc, char **argv) {
   WINDOW *menu_win;
   int highlight = 1;
@@ -280,6 +318,7 @@ int main(int argc, char **argv) {
 
   refresh();
   print_menu(menu_win, highlight);
+  print_licensing(menu_win);
 
   refresh();
   while (1) { // main loop
