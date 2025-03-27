@@ -18,7 +18,7 @@ To exit the program, simply type 'q'. To navigate through folders, you can eithe
 - Character special: \_file\_
 - Default: file
 
-If you have a suggestion regarding further differentiation or ideas, feel free to send a pull request.
+If you have a suggestion regarding further differentiation or ideas, feel free to send a pull request or raise an issue.
 
 # Why
 I wanted to experiment with a custom software for a fast, reliable, no-nonsense navigation between folders.
