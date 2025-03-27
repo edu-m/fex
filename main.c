@@ -1,3 +1,4 @@
+// fex, the minimalistic file explorer
 // Copyright (c) 2025 Eduardo Meli
 /*
 This file is part of fex.

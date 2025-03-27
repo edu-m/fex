@@ -12,3 +12,8 @@ The goal is to create a program that allows for a very quick and easy access of 
 The code itself is (or at least should) be ANSI/ISO C compliant, except for the OS-dependent calls in the file system interaction. In the current implementation all calls are made with POSIX systems in mind. The goal is to make as easy as possible to make a "drop-in replacement" set of functions for other systems. I will make a serious attempt at keeping the code versatile for anybody to modify as they please.
 
 Like I said, this software is inspired and is also integrated with vim, so navigation with cursor keys is also available with the classic "hjkl" keys. As I make progress in developement (which currently has no definitive plan), I will integrate more of the features provided by vim to enhance the experience without bloating the overall package.
+
+# Copyright notice
+
+This software is distributed under the GNU GPL 3.0 license. Refer to LICENSE or visit <http://www.gnu.org/licenses/> for more information.
+You are more than welcome to fork, modify or distribute this software.
