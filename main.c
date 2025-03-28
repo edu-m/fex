@@ -187,16 +187,16 @@ void handle_keyw(WINDOW *menu_win, int n_choices, int *highlight) {
       }
     }
     if (c == 10) {
-      if (strncmp(input_buffer, "G", 1) == 0) {
+      if (strncmp(input_buffer, "G\0", 2) == 0) {
         *highlight = n_choices + 1;
-      } else if (strncmp(input_buffer, "gg", 2) == 0) {
+      } else if (strncmp(input_buffer, "gg\0", 3) == 0) {
         *highlight = 1;
-      } else if (strncmp(input_buffer, "vim", 3) == 0) {
+      } else if (strncmp(input_buffer, "vim\0", 4) == 0) {
         endwin();
         system("vim .");
         initscr();
         break;
-      } else if (strncmp(input_buffer, "w", 1) == 0) {
+      } else if (strncmp(input_buffer, "w\0", 2) == 0) {
         print_logo(menu_win);
       }
       break; // Exit after Enter
