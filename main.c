@@ -32,7 +32,7 @@ int starty = 0;
 
 char **choices = NULL;
 int n_choices = 0;
-bool hide_hidden_files = true;
+bool show_hidden_files = false;
 
 int max(int a, int b) { return a > b ? a : b; }
 
@@ -120,18 +120,35 @@ void print_logo(WINDOW *menu_win) {
                         "  +#+        +#+         +#+  +#+     ",
                         " #+#        #+#        #+#    #+#     ",
                         "###        ########## ###    ###      "};
-
+  clear();
   int n_lines = sizeof(logo) / sizeof(logo[0]);
   int start_y = LINES / 4;
-
   for (int i = 0; i < n_lines; i++) {
     int line_len = strlen(logo[i]);
     int start_x = (COLS - line_len) / 2;
     mvwprintw(menu_win, start_y + i, start_x, "%s", logo[i]);
   }
+  int _s = -6;
+
+  refresh();
+  wattron(menu_win, A_REVERSE);
+  mvwprintw(
+      menu_win, LINES + _s--, 0, "%s",
+      "This is free software, and you are welcome to redistribute it under "
+      "certain conditions.\nThis program is distributed in the hope that "
+      "it will be useful, but WITHOUT ANY WARRANTY;\nwithout even the "
+      "implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR "
+      "PURPOSE.\nSee the GNU General Public License for more details: "
+      "<http://www.gnu.org/licenses/>");
+  mvwprintw(menu_win, LINES + _s--, 0, "%s",
+            "This program comes with ABSOLUTELY NO WARRANTY;");
+  mvwprintw(menu_win, LINES + _s--, 0, "%s",
+            "fex 1.0 Copyright (C) 2025 Eduardo Meli");
+  wattroff(menu_win, A_REVERSE);
+  wgetch(menu_win);
 }
 
-void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
+void handle_keyw(WINDOW *menu_win, int n_choices, int *highlight) {
   mvprintw(LINES - 1, 0, ": ");
   int c = 0;
   int count = 0;
@@ -140,62 +157,49 @@ void handle_search(WINDOW *menu_win, int n_choices, int *highlight) {
   int i = 0;
   input_buffer[0] = '\0';
 
-  while (count < n_choices && c != 27 && c != 10 && c != 261 && c != 108 &&
+  while (count < n_choices && c != 27 && c != 261 && c != 108 &&
          n_digits(count) <= n_digits(n_choices)) {
     clrtoeol();
     refresh();
     c = wgetch(menu_win);
+
     if ((c == KEY_BACKSPACE || c == 127) && i > 0) {
       i--;
       input_buffer[i] = '\0';
-    } else if (c != 27 && c != 10 && c != 261 && c != 108) {
-      if (i < 32) {
+    } else if (c != 27 && c != 261 && c != 108 && c != 10) {
+      if (i < 31) {
         input_buffer[i++] = (char)c;
         input_buffer[i] = '\0';
       }
     }
+
     mvprintw(LINES - 1, 0, ":%s", input_buffer);
     refresh();
-    if (strncmp(input_buffer, "G", 1) == 0) {
-      *highlight = n_choices + 1;
-    } else if (strncmp(input_buffer, "gg", 2) == 0) {
-      *highlight = 1;
-    } else if (strncmp(input_buffer, "vim", 3) == 0) {
-      char vim_cmd[6];
-      endwin();
-      system("vim .");
-      initscr();
-      break;
-    }
 
-    else if (strncmp(input_buffer, "w", 1) == 0) {
-      clear();
-      int _s = -6;
-      wattron(menu_win, A_REVERSE);
-      mvwprintw(
-          menu_win, LINES + _s--, 0, "%s",
-          "This is free software, and you are welcome to redistribute it under "
-          "certain conditions.\nThis program is distributed in the hope that "
-          "it will be useful, but WITHOUT ANY WARRANTY;\nwithout even the "
-          "implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR "
-          "PURPOSE.\nSee the GNU General Public License for more details: "
-          "<http://www.gnu.org/licenses/>");
-      mvwprintw(menu_win, LINES + _s--, 0, "%s",
-                "This program comes with ABSOLUTELY NO WARRANTY;");
-      mvwprintw(menu_win, LINES + _s--, 0, "%s",
-                "fex 1.0 Copyright (C) 2025 Eduardo Meli");
-      wattroff(menu_win, A_REVERSE);
-      print_logo(menu_win);
-    } else if (digits_only(input_buffer)) {
+    if (digits_only(input_buffer)) {
       count = atoi(input_buffer);
-
       if (count < n_choices) {
         *highlight = count + 1;
-        if (i == max_digits - 1)
+        if (i == max_digits)
           break;
       } else {
         *highlight = n_choices + 1;
       }
+    }
+    if (c == 10) {
+      if (strncmp(input_buffer, "G", 1) == 0) {
+        *highlight = n_choices + 1;
+      } else if (strncmp(input_buffer, "gg", 2) == 0) {
+        *highlight = 1;
+      } else if (strncmp(input_buffer, "vim", 3) == 0) {
+        endwin();
+        system("vim .");
+        initscr();
+        break;
+      } else if (strncmp(input_buffer, "w", 1) == 0) {
+        print_logo(menu_win);
+      }
+      break; // Exit after Enter
     }
   }
   clrtoeol();
@@ -220,7 +224,7 @@ void load_directory(const char *dirpath) {
   }
 
   while ((entry = readdir(dir)) != NULL) {
-    if (hide_hidden_files && entry->d_name[0] == '.' &&
+    if (!show_hidden_files && entry->d_name[0] == '.' &&
         strncmp(entry->d_name, "..", 2) != 0) {
       continue;
     }
@@ -397,21 +401,18 @@ int main(int argc, char **argv) {
       choice = -1;
       break;
     case 'a':
-      if (hide_hidden_files) {
-        hide_hidden_files = false;
-        load_directory(".");
-        refresh();
-        break;
-      }
-      int old_n_choices = n_choices;
-      if (highlight == old_n_choices - 1)
-        highlight = n_choices + 1;
-      hide_hidden_files = true;
+    show_hidden_files = !show_hidden_files;  // <--- move this up
+    {
+      int old_n_c = n_choices;
       load_directory(".");
+      if (highlight > n_choices)
+        highlight = n_choices;
       refresh();
-      break;
+    }
+    break;
+  
     case ':':
-      handle_search(menu_win, n_choices - 1, &highlight);
+      handle_keyw(menu_win, n_choices - 1, &highlight);
     }
     print_menu(menu_win, highlight);
     if (choice != 0)
