@@ -215,9 +215,16 @@ static void handle_search(WINDOW *menu_win, int *highlight) {
     mvprintw(LINES - 1, 0, "/%s", query);
     clrtoeol();
     refresh();
+
     for (int i = LINES - (visible_count + 2); i < LINES - 1; i++) {
       move(i, 0);
       clrtoeol();
+    }
+
+    if(query[0] == '\0')
+    {
+	    refresh();
+	    continue;
     }
     trie_node *node = search_trie_prefix(root, query);
     match_count = 0;
@@ -409,6 +416,7 @@ int main(int argc, char **argv) {
   WINDOW *menu_win;
   int highlight = 1, choice = 0, c;
   char info[1024];
+  const char *homedir = getenv("HOME");
   if (argc < 2)
     load_directory(".");
   else {
@@ -426,6 +434,7 @@ int main(int argc, char **argv) {
   starty = 1;
   menu_win = newwin(LINES, COLS, starty, startx);
   keypad(menu_win, TRUE);
+  curs_set(0);
   refresh();
   print_menu(menu_win, highlight);
   print_licensing(menu_win);
@@ -504,11 +513,16 @@ int main(int argc, char **argv) {
     case '/':
       handle_search(menu_win, &highlight);
       break;
+    case '~':
+
+      load_directory(homedir);
+      break;
     }
     print_menu(menu_win, highlight);
     if (choice)
       break;
   }
+  clear();
   refresh();
   endwin();
   free_cbuf();
