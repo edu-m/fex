@@ -4,12 +4,14 @@ a fast, minimalistic File EXplorer for linux written in C.
 # How to use
 The software, when opened, will display the current folder by default, but an arbitrary path can be specified as well.
 The special character ':' will allow the user to enter a series of commands to navigate or trigger a specific event, here is a comprehensive list of all of the currently implemented keywords:
-- gg + Enter: selects the first element of the directory
-- G + Enter: selects the last element of the directory
+- gg: selects the first element of the directory
+- G: selects the last element of the directory
 - [0-9]+ + Enter* (any number n): will select the nth element, if available. If the selected number is too big, it will be interpreted as G. *Note that if the number inserted is sufficiently large, the program will not need the user to press Enter, and will simply jump to that selection
 - vim: will open vim in the current directory
 - w: will display the logo and a brief copyright notice
 - To quit from ':' mode, press the Escape button
+
+Typing '/' will put the program into search mode. It is possible to search for files in the current directory, which will appear at the bottom of the screen, shown as a list. As the name of the searched file is typed out, the list will narrow down. To jump to the matched file, simply press Enter.
 
 Hidden folders and files are by default not shown, you can toggle this option by pressing 'a'.
 To exit the program, simply type 'q'. To navigate through folders, you can either use the arrow keys or the 'hjkl' keys in vim style. To open a directory, simply press Enter after having selected it. If you open a text file, it will be opened with vim, anything else will be opened with your default application. Fex has a way to differentiate between file types:
