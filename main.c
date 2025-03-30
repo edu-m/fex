@@ -259,12 +259,12 @@ static void handle_search(WINDOW *menu_win, int *highlight) {
 
 static void print_logo(WINDOW *menu_win) {
   const char *logo[] = {"      :::::::::: :::::::::: :::    :::",
-                        "     :+:        :+:        :+:    :+:",
-                        "    +:+        +:+         +:+  +:+",
-                        "   :#::+::#   +#++:++#     +#++:+",
-                        "  +#+        +#+         +#+  +#+",
-                        " #+#        #+#        #+#    #+#",
-                        "###        ########## ###    ###"};
+                        "     :+:        :+:        :+:    :+: ",
+                        "    +:+        +:+         +:+  +:+   ",
+                        "   :#::+::#   +#++:++#     +#++:+     ",
+                        "  +#+        +#+         +#+  +#+     ",
+                        " #+#        #+#        #+#    #+#     ",
+                        "###        ########## ###    ###      "};
   clear();
   int n_lines = sizeof(logo) / sizeof(logo[0]), start_y = LINES / 4;
   for (int i = 0; i < n_lines; i++) {
