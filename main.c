@@ -9,13 +9,39 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+#include <signal.h>
 #define FEX_VERSION "1.1"
-
+#define BUFSIZE 1024
 int startx = 0, starty = 0;
 char **choices = NULL;
 int n_choices = 0;
 bool show_hidden_files = false;
+static void free_cbuf();
+void handle_exit(){	
+  	curs_set(1);
+  	clear();
+	refresh();
+	endwin();
+	free_cbuf();
+	FILE *fptr;
+	char dir[BUFSIZE];
+	snprintf(dir,sizeof(dir),"%s/.fexlastdir",getenv("HOME"));
+	fptr = fopen(dir,"w");
+	if(!fptr)
+	{
+		perror("fopen");
+		exit(1);
+	}
+	char cwd[BUFSIZE];
+	getcwd(cwd,BUFSIZE);
+	fprintf(fptr,cwd);
+	exit(0);	
+}
+
+void sighandler(int signum){
+	if(signum == SIGINT)
+		handle_exit();
+}
 
 static inline int max_val(int a, int b) { return a > b ? a : b; }
 static inline int n_digits(int n) {
@@ -34,7 +60,7 @@ static inline int digits_only(const char *s) {
 }
 
 static int is_text_file(const char *filepath) {
-  char command[512], mime[256] = {0};
+  char command[512], mime[BUFSIZE] = {0};
   FILE *fp;
   snprintf(command, sizeof(command), "file --mime-type -b \"%s\"", filepath);
   if (!(fp = popen(command, "r"))) {
@@ -51,7 +77,7 @@ static int is_text_file(const char *filepath) {
 }
 
 static void get_file_info(const char *pathname, char *result, size_t size) {
-  char command[512], buffer[256];
+  char command[512], buffer[BUFSIZE];
   FILE *fp;
   snprintf(command, sizeof(command), "file \"%s\"", pathname);
   if (!(fp = popen(command, "r"))) {
@@ -190,8 +216,8 @@ static void handle_search(WINDOW *menu_win, int *highlight) {
   trie_node *root = create_trie_node();
   for (int i = 0; i < n_choices; i++)
     insert_trie(root, choices[i], i);
-  char query[256] = {0};
-  int pos = 0, c, selected_match = 0, match_count = 0, indices[256] = {0};
+  char query[BUFSIZE] = {0};
+  int pos = 0, c, selected_match = 0, match_count = 0, indices[BUFSIZE] = {0};
   const int visible_count = 5;
   mvprintw(LINES - 1, 0, "/");
   refresh();
@@ -229,7 +255,7 @@ static void handle_search(WINDOW *menu_win, int *highlight) {
     trie_node *node = search_trie_prefix(root, query);
     match_count = 0;
     if (node)
-      collect_trie_indices(node, indices, &match_count, 256);
+      collect_trie_indices(node, indices, &match_count, BUFSIZE);
     if (match_count > 0) {
       if (selected_match >= match_count)
         selected_match = 0;
@@ -413,10 +439,10 @@ static void print_licensing(WINDOW *menu_win) {
 }
 
 int main(int argc, char **argv) {
+  signal(SIGINT,sighandler);
   WINDOW *menu_win;
   int highlight = 1, choice = 0, c;
   char info[1024];
-  const char *homedir = getenv("HOME");
   if (argc < 2)
     load_directory(".");
   else {
@@ -515,16 +541,14 @@ int main(int argc, char **argv) {
       break;
     case '~':
 
-      load_directory(homedir);
+      load_directory(getenv("HOME"));
       break;
     }
     print_menu(menu_win, highlight);
     if (choice)
       break;
   }
-  clear();
-  refresh();
-  endwin();
-  free_cbuf();
+  handle_exit();
+
   return 0;
 }
