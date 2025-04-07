@@ -7,7 +7,8 @@ The special character ':' will allow the user to enter a series of commands to n
 - gg: selects the first element of the directory
 - G: selects the last element of the directory
 - [0-9]+ + Enter* (any number n): will select the nth element, if available. If the selected number is too big, it will be interpreted as G. *Note that if the number inserted is sufficiently large, the program will not need the user to press Enter, and will simply jump to that selection
-- vim: will open vim in the current directory
+- vim: will open vim in the currently selected choice
+- vim!: will open in the current directory
 - w: will display the logo and a brief copyright notice
 - To quit from ':' mode, press the Escape button
 
