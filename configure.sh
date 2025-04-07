@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Eduardo Meli
+# Released under GNU GPL 3.0 license. Refer to LICENSE or visit <http://www.gnu.org/licenses/>
 #!/bin/bash
 
 sudo cp ./fex_exec /usr/local/bin/fex_exec
