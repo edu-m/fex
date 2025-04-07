@@ -1,7 +1,9 @@
+#include "trie.h"
 #include "xdg.h"
 #include <ctype.h>
 #include <dirent.h>
 #include <ncurses.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,38 +11,37 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <signal.h>
 #define FEX_VERSION "1.1"
-#define BUFSIZE 1024
 int startx = 0, starty = 0;
 char **choices = NULL;
 int n_choices = 0;
 bool show_hidden_files = false;
 static void free_cbuf();
-void handle_exit(){	
-  	curs_set(1);
-  	clear();
-	refresh();
-	endwin();
-	free_cbuf();
-	FILE *fptr;
-	char dir[BUFSIZE];
-	snprintf(dir,sizeof(dir),"%s/.fexlastdir",getenv("HOME"));
-	fptr = fopen(dir,"w");
-	if(!fptr)
-	{
-		perror("fopen");
-		exit(1);
-	}
-	char cwd[BUFSIZE];
-	getcwd(cwd,BUFSIZE);
-	fprintf(fptr,cwd);
-	exit(0);	
+static void load_directory(const char *);
+
+void handle_exit(int status) {
+  curs_set(1);
+  clear();
+  refresh();
+  endwin();
+  free_cbuf();
+  FILE *fptr;
+  char dir[BUFSIZE];
+  snprintf(dir, sizeof(dir), "%s/.fexlastdir", getenv("HOME"));
+  fptr = fopen(dir, "w");
+  if (!fptr) {
+    perror("fopen");
+    exit(EXIT_FAILURE);
+  }
+  char cwd[BUFSIZE];
+  getcwd(cwd, BUFSIZE);
+  fprintf(fptr, "%s", cwd);
+  exit(status);
 }
 
-void sighandler(int signum){
-	if(signum == SIGINT)
-		handle_exit();
+void sighandler(int signum) {
+  if (signum == SIGINT)
+    handle_exit(EXIT_SUCCESS);
 }
 
 static inline int max_val(int a, int b) { return a > b ? a : b; }
@@ -145,151 +146,6 @@ static void print_menu(WINDOW *menu_win, int highlight) {
   wrefresh(menu_win);
 }
 
-#define ALPHABET_SIZE 128
-typedef struct trie_node {
-  struct trie_node *children[ALPHABET_SIZE];
-  bool is_end_of_word;
-  int index;
-} trie_node;
-
-static trie_node *create_trie_node(void) {
-  trie_node *node = malloc(sizeof(trie_node));
-  if (node) {
-    node->is_end_of_word = false;
-    node->index = -1;
-    for (int i = 0; i < ALPHABET_SIZE; i++)
-      node->children[i] = NULL;
-  }
-  return node;
-}
-
-static void insert_trie(trie_node *root, const char *word, int index) {
-  trie_node *cur = root;
-  for (int i = 0; word[i]; i++) {
-    int idx = (int)word[i];
-    if (idx < 0 || idx >= ALPHABET_SIZE)
-      continue;
-    if (!cur->children[idx])
-      cur->children[idx] = create_trie_node();
-    cur = cur->children[idx];
-  }
-  cur->is_end_of_word = true;
-  cur->index = index;
-}
-
-static trie_node *search_trie_prefix(trie_node *root, const char *prefix) {
-  trie_node *cur = root;
-  for (int i = 0; prefix[i]; i++) {
-    int idx = (int)prefix[i];
-    if (idx < 0 || idx >= ALPHABET_SIZE)
-      return NULL;
-    if (!cur->children[idx])
-      return NULL;
-    cur = cur->children[idx];
-  }
-  return cur;
-}
-
-static void collect_trie_indices(trie_node *node, int *indices, int *count,
-                                 int max_count) {
-  if (!node || *count >= max_count)
-    return;
-  if (node->is_end_of_word) {
-    indices[*count] = node->index;
-    (*count)++;
-  }
-  for (int i = 0; i < ALPHABET_SIZE; i++)
-    if (node->children[i])
-      collect_trie_indices(node->children[i], indices, count, max_count);
-}
-
-static void free_trie(trie_node *node) {
-  if (!node)
-    return;
-  for (int i = 0; i < ALPHABET_SIZE; i++)
-    if (node->children[i])
-      free_trie(node->children[i]);
-  free(node);
-}
-
-static void handle_search(WINDOW *menu_win, int *highlight) {
-  trie_node *root = create_trie_node();
-  for (int i = 0; i < n_choices; i++)
-    insert_trie(root, choices[i], i);
-  char query[BUFSIZE] = {0};
-  int pos = 0, c, selected_match = 0, match_count = 0, indices[BUFSIZE] = {0};
-  const int visible_count = 5;
-  mvprintw(LINES - 1, 0, "/");
-  refresh();
-  while ((c = wgetch(menu_win)) != '\n' && c != 27) {
-    if ((c == KEY_BACKSPACE || c == 127) && pos > 0) {
-      pos--;
-      query[pos] = '\0';
-    } else if (c != '\n' && pos < (int)sizeof(query) - 1 && c != KEY_UP &&
-               c != KEY_DOWN) {
-      query[pos++] = (char)c;
-      query[pos] = '\0';
-    }
-    if (c == KEY_UP || c == KEY_DOWN) {
-      if (match_count > 0) {
-        if (c == KEY_UP)
-          selected_match = (selected_match - 1 + match_count) % match_count;
-        else if (c == KEY_DOWN)
-          selected_match = (selected_match + 1) % match_count;
-      }
-    }
-    mvprintw(LINES - 1, 0, "/%s", query);
-    clrtoeol();
-    refresh();
-
-    for (int i = LINES - (visible_count + 2); i < LINES - 1; i++) {
-      move(i, 0);
-      clrtoeol();
-    }
-
-    if(query[0] == '\0')
-    {
-	    refresh();
-	    continue;
-    }
-    trie_node *node = search_trie_prefix(root, query);
-    match_count = 0;
-    if (node)
-      collect_trie_indices(node, indices, &match_count, BUFSIZE);
-    if (match_count > 0) {
-      if (selected_match >= match_count)
-        selected_match = 0;
-      int first_index = (match_count <= visible_count)
-                            ? 0
-                            : (selected_match - visible_count / 2);
-      if (first_index < 0)
-        first_index = 0;
-      else if (first_index > match_count - visible_count)
-        first_index = match_count - visible_count;
-      for (int i = first_index;
-           i < first_index + visible_count && i < match_count; i++) {
-        if (i == selected_match)
-          attron(A_REVERSE);
-        mvprintw(LINES - (visible_count + 1) + (i - first_index), 0, "%s",
-                 choices[indices[i]]);
-        if (i == selected_match)
-          attroff(A_REVERSE);
-      }
-      *highlight = indices[selected_match] + 1;
-    } else
-      mvprintw(LINES - (visible_count + 1), 0, "No matches");
-    refresh();
-  }
-  free_trie(root);
-  move(LINES - 1, 0);
-  clrtoeol();
-  for (int i = LINES - (visible_count + 1); i < LINES - 1; i++) {
-    move(i, 0);
-    clrtoeol();
-  }
-  refresh();
-}
-
 static void print_logo(WINDOW *menu_win) {
   const char *logo[] = {"      :::::::::: :::::::::: :::    :::",
                         "     :+:        :+:        :+:    :+: ",
@@ -362,7 +218,7 @@ static void handle_keyw(WINDOW *menu_win, int n_choices, int *highlight) {
         if (pid == 0) {
           execlp("vim", "vim", choices[*highlight - 1], (char *)NULL);
           perror("execlp");
-          exit(EXIT_FAILURE);
+          handle_exit(EXIT_FAILURE);
         } else if (pid > 0) {
           int status;
           waitpid(pid, &status, 0);
@@ -372,12 +228,13 @@ static void handle_keyw(WINDOW *menu_win, int n_choices, int *highlight) {
           cbreak();
           menu_win = newwin(LINES, COLS, starty, startx);
           keypad(menu_win, TRUE);
+          load_directory(".");
           print_menu(menu_win, *highlight);
           refresh();
           break;
         } else {
           perror("fork");
-          exit(EXIT_FAILURE);
+          handle_exit(EXIT_FAILURE);
         }
       } else if (strncmp(input_buffer, "w", 2) == 0) {
         print_logo(menu_win);
@@ -399,7 +256,7 @@ static void load_directory(const char *dirpath) {
   free_cbuf();
   if (!(dir = opendir("."))) {
     perror("opendir");
-    exit(EXIT_FAILURE);
+    handle_exit(EXIT_FAILURE);
   }
   while ((entry = readdir(dir)) != NULL) {
     if (!show_hidden_files && entry->d_name[0] == '.' &&
@@ -410,7 +267,7 @@ static void load_directory(const char *dirpath) {
       perror("realloc");
       free_cbuf();
       closedir(dir);
-      exit(EXIT_FAILURE);
+      handle_exit(EXIT_FAILURE);
     }
     choices = temp;
     choices[n_choices] = strdup(entry->d_name);
@@ -418,7 +275,7 @@ static void load_directory(const char *dirpath) {
       perror("strdup");
       free_cbuf();
       closedir(dir);
-      exit(EXIT_FAILURE);
+      handle_exit(EXIT_FAILURE);
     }
     n_choices++;
   }
@@ -427,7 +284,7 @@ static void load_directory(const char *dirpath) {
 
 static void error(const char *what) {
   fprintf(stderr, "%s\n", what);
-  exit(EXIT_FAILURE);
+  handle_exit(EXIT_FAILURE);
 }
 
 static void print_licensing(WINDOW *menu_win) {
@@ -439,10 +296,10 @@ static void print_licensing(WINDOW *menu_win) {
 }
 
 int main(int argc, char **argv) {
-  signal(SIGINT,sighandler);
+  signal(SIGINT, sighandler);
   WINDOW *menu_win;
   int highlight = 1, choice = 0, c;
-  char info[1024];
+  char info[BUFSIZE];
   if (argc < 2)
     load_directory(".");
   else {
@@ -501,7 +358,7 @@ int main(int argc, char **argv) {
             endwin();
             execlp("vim", "vim", choices[highlight - 1], (char *)NULL);
             perror("execlp");
-            exit(EXIT_FAILURE);
+            handle_exit(EXIT_FAILURE);
           } else if (pid > 0) {
             int status;
             waitpid(pid, &status, 0);
@@ -516,7 +373,7 @@ int main(int argc, char **argv) {
             break;
           } else {
             perror("fork");
-            exit(EXIT_FAILURE);
+            handle_exit(EXIT_FAILURE);
           }
         }
         openFile(choices[highlight - 1]);
@@ -537,10 +394,9 @@ int main(int argc, char **argv) {
       handle_keyw(menu_win, n_choices - 1, &highlight);
       break;
     case '/':
-      handle_search(menu_win, &highlight);
+      handle_search(menu_win, &highlight, n_choices, choices);
       break;
     case '~':
-
       load_directory(getenv("HOME"));
       break;
     }
@@ -548,7 +404,6 @@ int main(int argc, char **argv) {
     if (choice)
       break;
   }
-  handle_exit();
-
+  handle_exit(EXIT_SUCCESS);
   return 0;
 }
