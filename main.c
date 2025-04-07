@@ -401,6 +401,11 @@ int main(int argc, char **argv) {
       break;
     case '~':
       load_directory(getenv("HOME"));
+      // if our current selection is further down than the current directory allows
+      // we should move it up (could make sense to put it at the bottom, or even in the middle?)
+      // might change this in the future to see what's more convenient
+      if (highlight > n_choices)
+        highlight = 0;
       break;
     }
     print_menu(menu_win, highlight);
