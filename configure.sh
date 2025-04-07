@@ -17,7 +17,7 @@ read -r -d '' func_def <<'EOF'
 
 # Added by fex setup
 fex() {
-    usr/local/bin/fex_exec
+    /usr/local/bin/fex_exec
     if [ -f ~/.fexlastdir ]; then
         cd "$(cat ~/.fexlastdir)"
     fi
