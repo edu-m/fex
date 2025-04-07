@@ -16,6 +16,6 @@ You should have received a copy of the GNU General Public License
 along with fex.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-int findExecutable(const char*, char*);
-void execProcess(const char*, char* const[]);
-int openFile(char*);
+int findExecutable(const char *, char *);
+void execProcess(const char *, char *const[]);
+int openFile(char *);

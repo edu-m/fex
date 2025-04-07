@@ -61,7 +61,7 @@ static inline int digits_only(const char *s) {
 }
 
 static int is_text_file(const char *filepath) {
-  char command[512], mime[BUFSIZE] = {0};
+  char command[BUFSIZE / 2], mime[BUFSIZE] = {0};
   FILE *fp;
   snprintf(command, sizeof(command), "file --mime-type -b \"%s\"", filepath);
   if (!(fp = popen(command, "r"))) {
@@ -78,7 +78,7 @@ static int is_text_file(const char *filepath) {
 }
 
 static void get_file_info(const char *pathname, char *result, size_t size) {
-  char command[512], buffer[BUFSIZE];
+  char command[BUFSIZE / 2], buffer[BUFSIZE];
   FILE *fp;
   snprintf(command, sizeof(command), "file \"%s\"", pathname);
   if (!(fp = popen(command, "r"))) {
@@ -212,11 +212,14 @@ static void handle_keyw(WINDOW *menu_win, int n_choices, int *highlight) {
         *highlight = n_choices + 1;
       else if (strncmp(input_buffer, "gg", 3) == 0)
         *highlight = 1;
-      else if (strncmp(input_buffer, "vim", 4) == 0) {
+      else if (strncmp(input_buffer, "vim", 3) == 0) {
         endwin();
         pid_t pid = fork();
         if (pid == 0) {
-          execlp("vim", "vim", choices[*highlight - 1], (char *)NULL);
+          if (input_buffer[3] == '!')
+            execlp("vim", "vim", ".", (char *)NULL);
+          else
+            execlp("vim", "vim", choices[*highlight - 1], (char *)NULL);
           perror("execlp");
           handle_exit(EXIT_FAILURE);
         } else if (pid > 0) {
