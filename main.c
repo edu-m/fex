@@ -29,14 +29,14 @@ along with fex.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/wait.h>
 #include <unistd.h>
 #define FEX_VERSION "1.1"
-int startx = 0, starty = 0;
-char **choices = NULL;
-int n_choices = 0;
-bool show_hidden_files = false;
-static void free_cbuf();
+static int startx = 0, starty = 0;
+static char **choices = NULL;
+static int n_choices;
+static bool show_hidden_files = false;
+static void free_cbuf(void);
 static void load_directory(const char *);
 
-void handle_exit(int status) {
+static void handle_exit(int status) {
   curs_set(1);
   clear();
   refresh();
@@ -56,13 +56,12 @@ void handle_exit(int status) {
   exit(status);
 }
 
-void sighandler(int signum) {
+static void sighandler(int signum) {
   if (signum == SIGINT)
     handle_exit(EXIT_SUCCESS);
 }
 
-static inline int max_val(int a, int b) { return a > b ? a : b; }
-static inline int n_digits(int n) {
+static int n_digits(int n) {
   int ret = 1;
   do {
     n /= 10;
@@ -70,7 +69,7 @@ static inline int n_digits(int n) {
   } while (n);
   return ret;
 }
-static inline int digits_only(const char *s) {
+static int digits_only(const char *s) {
   while (*s)
     if (!isdigit(*s++))
       return 0;
@@ -135,27 +134,27 @@ static void print_menu(WINDOW *menu_win, int highlight) {
   for (int i = first; i < first + visible_count && i < n_choices; i++) {
     struct stat st;
     lstat(choices[i], &st);
-    const char *fmt;
-    switch (st.st_mode & S_IFMT) {
-    case S_IFLNK:
-      fmt = "%d\t| {%s}";
-      break;
-    case S_IFDIR:
-      fmt = "%d\t| [%s]";
-      break;
-    case S_IFCHR:
-      fmt = "%d\t| ..%s..";
-      break;
-    case S_IFBLK:
-      fmt = "%d\t| _%s_";
-      break;
-    default:
-      fmt = "%d\t| %s";
-      break;
-    }
     if ((highlight - 1) == i)
       wattron(menu_win, A_REVERSE);
-    mvwprintw(menu_win, y, x, fmt, i, choices[i]);
+
+    switch (st.st_mode & S_IFMT) {
+    case S_IFLNK:
+      mvwprintw(menu_win, y, x, "%d\t| {%s}", i, choices[i]);
+      break;
+    case S_IFDIR:
+      mvwprintw(menu_win, y, x, "%d\t| [%s]", i, choices[i]);
+      break;
+    case S_IFCHR:
+      mvwprintw(menu_win, y, x, "%d\t| ..%s..", i, choices[i]);
+      break;
+    case S_IFBLK:
+      mvwprintw(menu_win, y, x, "%d\t| _%s_", i, choices[i]);
+      break;
+    default:
+      mvwprintw(menu_win, y, x, "%d\t| %s", i, choices[i]);
+      break;
+    }
+
     if ((highlight - 1) == i)
       wattroff(menu_win, A_REVERSE);
     y++;
@@ -195,12 +194,12 @@ static void print_logo(WINDOW *menu_win) {
   wgetch(menu_win);
 }
 
-static void handle_keyw(WINDOW *menu_win, int n_choices, int *highlight) {
+static void handle_keyw(WINDOW *menu_win, int n_c, int *highlight) {
   mvprintw(LINES - 1, 0, ": ");
-  int c = 0, count = 0, max_digits_val = n_digits(n_choices), i = 0;
+  int c = 0, count = 0, max_digits_val = n_digits(n_c), i = 0;
   char input_buffer[32] = {0};
-  while (count < n_choices && c != 27 && c != 261 && c != 108 &&
-         n_digits(count) <= n_digits(n_choices)) {
+  while (count < n_c && c != 27 && c != 261 && c != 108 &&
+         n_digits(count) <= n_digits(n_c)) {
     clrtoeol();
     refresh();
     c = wgetch(menu_win);
@@ -217,16 +216,16 @@ static void handle_keyw(WINDOW *menu_win, int n_choices, int *highlight) {
     refresh();
     if (digits_only(input_buffer)) {
       count = atoi(input_buffer);
-      if (count < n_choices) {
+      if (count < n_c) {
         *highlight = count + 1;
         if (i == max_digits_val)
           break;
       } else
-        *highlight = n_choices + 1;
+        *highlight = n_c + 1;
     }
     if (c == 10) {
       if (strncmp(input_buffer, "G", 2) == 0)
-        *highlight = n_choices + 1;
+        *highlight = n_c + 1;
       else if (strncmp(input_buffer, "gg", 3) == 0)
         *highlight = 1;
       else if (strncmp(input_buffer, "vim", 3) == 0) {
@@ -282,7 +281,8 @@ static void load_directory(const char *dirpath) {
     if (!show_hidden_files && entry->d_name[0] == '.' &&
         strncmp(entry->d_name, "..", 2) != 0)
       continue;
-    char **temp = realloc(choices, (n_choices + 1) * sizeof(*choices));
+    char **temp =
+        realloc(choices, (unsigned long)(n_choices + 1) * sizeof(*choices));
     if (!temp) {
       perror("realloc");
       free_cbuf();
@@ -310,8 +310,8 @@ static void error(const char *what) {
 static void print_licensing(WINDOW *menu_win) {
   const char *t0 = "fex " FEX_VERSION " Copyright (C) 2025 Eduardo Meli";
   const char *t1 = "for copyright details type `:w`.";
-  mvprintw(LINES - 4, COLS - strlen(t0), "%s", t0);
-  mvprintw(LINES - 3, COLS - strlen(t1), "%s", t1);
+  mvprintw(LINES - 4, COLS - (int)strlen(t0), "%s", t0);
+  mvprintw(LINES - 3, COLS - (int)strlen(t1), "%s", t1);
   wrefresh(menu_win);
 }
 
@@ -418,11 +418,14 @@ int main(int argc, char **argv) {
       break;
     case '~':
       load_directory(getenv("HOME"));
-      // if our current selection is further down than the current directory allows
-      // we should move it up (could make sense to put it at the bottom, or even in the middle?)
-      // might change this in the future to see what's more convenient
+      // if our current selection is further down than the current directory
+      // allows we should move it up (could make sense to put it at the bottom,
+      // or even in the middle?) might change this in the future to see what's
+      // more convenient
       if (highlight > n_choices)
         highlight = 0;
+      break;
+    default:
       break;
     }
     print_menu(menu_win, highlight);

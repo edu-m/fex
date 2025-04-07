@@ -31,7 +31,7 @@ typedef struct trie_node {
   int index;
 } trie_node;
 
-trie_node *create_trie_node();
+trie_node *create_trie_node(void);
 void insert_trie(trie_node *, const char *, int);
 trie_node *search_trie_prefix(trie_node *, const char *);
 void collect_trie_indices(trie_node *, int *, int *, int);

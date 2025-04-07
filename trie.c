@@ -20,7 +20,7 @@ along with fex.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdbool.h>
 #include <stdlib.h>
 
-trie_node *create_trie_node() {
+trie_node *create_trie_node(void) {
   trie_node *node = malloc(sizeof(trie_node));
   if (node) {
     node->is_end_of_word = false;
