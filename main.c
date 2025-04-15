@@ -17,11 +17,8 @@ along with fex.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "trie.h"
 #include "xdg.h"
-#include <ctype.h>
 #include <dirent.h>
 #include <ncurses.h>
-#include <signal.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +66,9 @@ static int n_digits(int n) {
   } while (n);
   return ret;
 }
+
+static inline int isdigit(int c) { return c >= '0' && c <= '9'; }
+
 static int digits_only(const char *s) {
   while (*s)
     if (!isdigit(*s++))
