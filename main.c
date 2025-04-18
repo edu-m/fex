@@ -93,6 +93,17 @@ static int is_text_file(const char *filepath) {
   return strncmp(mime, "text/", 5) == 0;
 }
 
+static int cmp_choices(const void *a, const void *b) {
+  const char *sa = *(const char *const *)a;
+  const char *sb = *(const char *const *)b;
+
+  if (strcmp(sa, "..") == 0)
+    return -1;
+  if (strcmp(sb, "..") == 0)
+    return +1;
+  return strcmp(sa, sb);
+}
+
 static void get_file_info(const char *pathname, char *result, size_t size) {
   char command[BUFSIZE / 2], buffer[BUFSIZE];
   FILE *fp;
@@ -265,41 +276,40 @@ static void handle_keyw(WINDOW *menu_win, int n_c, int *highlight) {
   refresh();
 }
 
-static void load_directory(const char *dirpath) {
+void load_directory(const char *dirpath) {
   DIR *dir;
   struct dirent *entry;
+
   if (chdir(dirpath) != 0) {
     perror("chdir");
     return;
   }
   free_cbuf();
-  if (!(dir = opendir("."))) {
+
+  dir = opendir(".");
+  if (!dir) {
     perror("opendir");
-    handle_exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
   while ((entry = readdir(dir)) != NULL) {
-    if (!show_hidden_files && entry->d_name[0] == '.' &&
-        strncmp(entry->d_name, "..", 2) != 0)
+    // skip "." only; keep ".."
+    if (strcmp(entry->d_name, ".") == 0)
       continue;
-    char **temp =
-        realloc(choices, (unsigned long)(n_choices + 1) * sizeof(*choices));
-    if (!temp) {
+    if (!show_hidden_files && entry->d_name[0] == '.' && entry->d_name[1] != '.')
+      continue;
+
+    char **tmp = realloc(choices, (n_choices + 1) * sizeof(*choices));
+    if (!tmp) {
       perror("realloc");
-      free_cbuf();
-      closedir(dir);
-      handle_exit(EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
-    choices = temp;
-    choices[n_choices] = strdup(entry->d_name);
-    if (!choices[n_choices]) {
-      perror("strdup");
-      free_cbuf();
-      closedir(dir);
-      handle_exit(EXIT_FAILURE);
-    }
-    n_choices++;
+    choices = tmp;
+    choices[n_choices++] = strdup(entry->d_name);
   }
   closedir(dir);
+
+  // Sort with our custom comparator
+  qsort(choices, n_choices, sizeof(*choices), cmp_choices);
 }
 
 static void error(const char *what) {
