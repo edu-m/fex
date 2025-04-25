@@ -25,7 +25,7 @@ along with fex.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#define FEX_VERSION "1.1"
+#define FEX_VERSION "1.2"
 static int startx = 0, starty = 0;
 static char **choices = NULL;
 static int n_choices;
