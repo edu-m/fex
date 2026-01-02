@@ -1,0 +1,20 @@
+post_install() {
+  cat <<'EOF'
+==> fex: shell integration
+fex installs bash/zsh integration scripts to /etc/profile.d/.
+
+Some terminal setups start non-login shells and may not automatically load /etc/profile.d/*.
+If `fex` does not change directory after exit, run (as your normal user):
+
+  fex-setup
+
+This will *optionally* (y/n) append a small guarded 'source /etc/profile.d/fex.(sh|zsh)' block to your shell rc
+(~/.bashrc or ~/.zshrc). To undo:
+
+  fex-setup --uninstall
+EOF
+}
+
+post_upgrade() {
+  post_install
+}

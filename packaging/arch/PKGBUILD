@@ -1,0 +1,21 @@
+pkgname=fex
+pkgver=0.1.0
+pkgrel=1
+install=fex.install
+pkgdesc="fex ncurses directory chooser with shell cd integration"
+arch=('x86_64')
+license=('GPL3' 'Boost')
+depends=('ncurses')
+makedepends=('gcc' 'make')
+source=("${pkgname}-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  make
+}
+
+package() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  make DESTDIR="${pkgdir}" PREFIX=/usr install
+}
