@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${EUID}" -eq 0 ]]; then
+  echo "fex-setup: please run this as your normal user (not root)." >&2
+  exit 1
+fi
+
+usage() {
+  cat <<'EOF'
+Usage: fex-setup [--uninstall]
+
+Opt-in helper that adds a small block to your shell rc file so that the fex()
+function is available in non-login interactive shells.
+
+What it does:
+  - Bash: appends a guarded `source /etc/profile.d/fex.sh` block to ~/.bashrc
+  - Zsh : appends a guarded `source /etc/profile.d/fex.zsh` block to ~/.zshrc
+
+It is idempotent and safe to run multiple times.
+
+To remove the block, run:
+  fex-setup --uninstall
+EOF
+}
+
+marker_begin="# >>> fex setup >>>"
+marker_end="# <<< fex setup <<<"
+
+pick_rc() {
+  local shell_base
+  shell_base="$(basename "${SHELL:-}")"
+  case "$shell_base" in
+    bash) echo "$HOME/.bashrc" ;;
+    zsh)  echo "$HOME/.zshrc" ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+block_for_shell() {
+  local shell_base
+  shell_base="$(basename "${SHELL:-}")"
+  case "$shell_base" in
+    bash)
+      cat <<EOF
+${marker_begin}
+# Load fex shell integration (installed by pacman) for non-login shells.
+if [ -f /etc/profile.d/fex.sh ]; then
+  source /etc/profile.d/fex.sh
+fi
+${marker_end}
+EOF
+      ;;
+    zsh)
+      cat <<EOF
+${marker_begin}
+# Load fex shell integration (installed by pacman) for non-login shells.
+if [ -f /etc/profile.d/fex.zsh ]; then
+  source /etc/profile.d/fex.zsh
+fi
+${marker_end}
+EOF
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+uninstall_block() {
+  local rc="$1"
+  if [[ ! -f "$rc" ]]; then
+    echo "Nothing to do: $rc does not exist."
+    return 0
+  fi
+  if ! grep -qF "$marker_begin" "$rc"; then
+    echo "Nothing to do: fex block not found in $rc."
+    return 0
+  fi
+  # Delete the block between markers (inclusive)
+  perl -0777 -i -pe "s/\n?\Q$marker_begin\E.*?\Q$marker_end\E\n?/\n/s" "$rc"
+  echo "Removed fex block from $rc."
+}
+
+main() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+
+  local rc
+  rc="$(pick_rc)"
+  if [[ -z "$rc" ]]; then
+    echo "fex-setup: unsupported shell: ${SHELL:-unknown}" >&2
+    echo "Supported: bash, zsh" >&2
+    exit 1
+  fi
+
+  if [[ "${1:-}" == "--uninstall" ]]; then
+    uninstall_block "$rc"
+    exit 0
+  fi
+
+  echo "This will enable 'fex' directory-changing integration for your current shell by adding a small block to:"
+  echo "  $rc"
+  echo
+  echo "The block simply sources the system integration script installed at /etc/profile.d/."
+  echo "No other changes are made."
+  echo
+  read -r -p "Proceed? [y/N] " ans
+  case "${ans:-}" in
+    y|Y|yes|YES)
+      ;;
+    *)
+      echo "Cancelled."
+      exit 0
+      ;;
+  esac
+
+  touch "$rc"
+
+  if grep -qF "$marker_begin" "$rc"; then
+    echo "Already enabled: fex block already present in $rc."
+    exit 0
+  fi
+
+  echo >> "$rc"
+  block_for_shell >> "$rc"
+  echo "Done. Restart your shell or run: source "$rc""
+}
+
+main "$@"

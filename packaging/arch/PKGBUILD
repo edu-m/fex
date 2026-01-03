@@ -1,11 +1,11 @@
 pkgname=fex
-pkgver=0.1.0
-pkgrel=1
+pkgver=1.2
+pkgrel=2
 install=fex.install
-pkgdesc="fex ncurses directory chooser with shell cd integration"
+pkgdesc="minimalistic TUI file explorer with vim integration"
 arch=('x86_64')
 license=('GPL3' 'Boost')
-depends=('ncurses')
+depends=('ncurses' 'vim')
 makedepends=('gcc' 'make')
 source=("${pkgname}-${pkgver}.tar.gz")
 sha256sums=('SKIP')

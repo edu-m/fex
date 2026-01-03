@@ -1,0 +1,4 @@
+*.o
+fex_exec
+*.pkg.tar.*
+*.log
