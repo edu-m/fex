@@ -57,3 +57,5 @@ fex_exec
 *sig*
 *db*
 *files*
+./packaging/arch/src/
+./packaging/arch/pkg/
