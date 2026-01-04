@@ -1,6 +1,6 @@
 pkgname=fex
 pkgver=1.2.1
-pkgrel=3
+pkgrel=4
 install=fex.install
 pkgdesc="minimalistic TUI file explorer with vim integration"
 arch=('x86_64')

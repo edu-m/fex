@@ -12,4 +12,5 @@ git archive --format=tar.gz --prefix="fex-${pkgver}/" HEAD > "fex-${pkgver}.tar.
 rm -f fexrepo.db* fexrepo.files* *.pkg.tar.zst
 makepkg -sf --sign &&
 repo-add -s -k "$GPGKEY" fexrepo.db.tar.gz *.pkg.tar.zst &&
+ssh "$REPOHOSTING" 'rm -rdf /srv/http/fexrepo/x86_64/*'
 scp *.sig fexrepo.db* fexrepo.files* *.pkg.tar.zst "$REPOHOSTING":/srv/http/fexrepo/x86_64/

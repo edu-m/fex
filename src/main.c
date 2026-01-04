@@ -23,7 +23,7 @@ along with fex.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define FEX_VERSION "1.2"
+#define FEX_VERSION "1.2.1"
 static int startx = 0, starty = 0;
 static char **choices = NULL;
 static int n_choices;
