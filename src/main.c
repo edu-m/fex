@@ -219,7 +219,8 @@ static void handle_keyw(WINDOW *menu_win, int n_c, int *highlight) {
         *highlight = 1;
       else if (strncmp(input_buffer, "vim", 3) == 0) {
         char *argv_local[] = {"vim", NULL, NULL};
-        argv_local[1] = (input_buffer[3] == '!') ? "." : choices[*highlight - 1];
+        argv_local[1] =
+            (input_buffer[3] == '!') ? "." : choices[*highlight - 1];
         endwin();
         if (platform_spawn_and_wait(argv_local) == -1)
           handle_exit(EXIT_FAILURE);

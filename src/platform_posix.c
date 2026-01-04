@@ -34,8 +34,7 @@ static void free_partial_names(char **names, int count) {
 
 int platform_change_directory(const char *path) { return chdir(path); }
 
-int platform_list_directory(bool show_hidden_files, char ***names,
-                            int *count) {
+int platform_list_directory(bool show_hidden_files, char ***names, int *count) {
   DIR *dir = opendir(".");
   if (!dir)
     return -1;
@@ -47,7 +46,8 @@ int platform_list_directory(bool show_hidden_files, char ***names,
   while ((entry = readdir(dir)) != NULL) {
     if (strcmp(entry->d_name, ".") == 0)
       continue;
-    if (!show_hidden_files && entry->d_name[0] == '.' && entry->d_name[1] != '.')
+    if (!show_hidden_files && entry->d_name[0] == '.' &&
+        entry->d_name[1] != '.')
       continue;
 
     char **tmp = realloc(*names, (*count + 1) * sizeof(*tmp));
