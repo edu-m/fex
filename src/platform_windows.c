@@ -18,7 +18,6 @@ along with fex.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "platform.h"
 #include <direct.h>
-#include <errno.h>
 #include <process.h>
 #include <shellapi.h>
 #include <stdio.h>

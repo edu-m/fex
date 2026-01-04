@@ -19,7 +19,6 @@ along with fex.  If not, see <http://www.gnu.org/licenses/>.
 #include "platform.h"
 #include "xdg.h"
 #include <dirent.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
