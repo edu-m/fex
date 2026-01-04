@@ -41,3 +41,12 @@ fex-setup --uninstall
 This repo includes an Arch PKGBUILD under `packaging/arch/`.
 It installs to `/usr` and does not automatically modify user dotfiles.
 Instead, it prints a post-install message recommending `fex-setup`.
+
+You can also obtain the custom repo to add to your pacman by pasting this into your `/etc/pacman.conf`:
+
+```
+[fexrepo]
+Server = https://ssh.lambdawiki.org/fexrepo/$arch
+```
+
+Feel free to download the public key at this [link](http://ssh.lambdawiki.org/fexrepo/fexrepo-publickey.asc) `SHA256: 0b69962a4d34e603c4bcd20fc8d81cfe2d4454f47c985900ce41f69fedb42673`
