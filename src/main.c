@@ -15,16 +15,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with fex.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "platform.h"
 #include "trie.h"
-#include "xdg.h"
-#include <dirent.h>
 #include <ncurses.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
 #define FEX_VERSION "1.2"
 static int startx = 0, starty = 0;
 static char **choices = NULL;
@@ -32,6 +30,7 @@ static int n_choices;
 static bool show_hidden_files = false;
 static void free_cbuf(void);
 static void load_directory(const char *);
+static WINDOW *recreate_menu_window(void);
 
 static void handle_exit(int status) {
   curs_set(1);
@@ -48,8 +47,8 @@ static void handle_exit(int status) {
     exit(EXIT_FAILURE);
   }
   char cwd[BUFSIZE];
-  getcwd(cwd, BUFSIZE);
-  fprintf(fptr, "%s", cwd);
+  if (platform_current_directory(cwd, sizeof(cwd)) == 0)
+    fprintf(fptr, "%s", cwd);
   exit(status);
 }
 
@@ -76,23 +75,6 @@ static int digits_only(const char *s) {
   return 1;
 }
 
-static int is_text_file(const char *filepath) {
-  char command[BUFSIZE / 2], mime[BUFSIZE] = {0};
-  FILE *fp;
-  snprintf(command, sizeof(command), "file --mime-type -b \"%s\"", filepath);
-  if (!(fp = popen(command, "r"))) {
-    perror("popen");
-    return 0;
-  }
-  if (!fgets(mime, sizeof(mime), fp)) {
-    pclose(fp);
-    return 0;
-  }
-  pclose(fp);
-  mime[strcspn(mime, "\n")] = '\0';
-  return strncmp(mime, "text/", 5) == 0;
-}
-
 static int cmp_choices(const void *a, const void *b) {
   const char *sa = *(const char *const *)a;
   const char *sb = *(const char *const *)b;
@@ -105,23 +87,9 @@ static int cmp_choices(const void *a, const void *b) {
 }
 
 static void get_file_info(const char *pathname, char *result, size_t size) {
-  char command[BUFSIZE / 2], buffer[BUFSIZE];
-  FILE *fp;
-  snprintf(command, sizeof(command), "file \"%s\"", pathname);
-  if (!(fp = popen(command, "r"))) {
-    perror("popen");
-    if (size)
-      result[0] = '\0';
-    return;
-  }
   if (size)
     result[0] = '\0';
-  while (fgets(buffer, sizeof(buffer), fp))
-    strncat(result, buffer, size - strlen(result) - 1);
-  if (pclose(fp) == -1) {
-    perror("pclose");
-    result[0] = '\0';
-  }
+  platform_describe_file(pathname, result, size);
 }
 
 static void free_cbuf(void) {
@@ -130,6 +98,17 @@ static void free_cbuf(void) {
   free(choices);
   choices = NULL;
   n_choices = 0;
+}
+
+static WINDOW *recreate_menu_window(void) {
+  initscr();
+  clear();
+  noecho();
+  cbreak();
+  WINDOW *menu_win = newwin(LINES, COLS, starty, startx);
+  keypad(menu_win, TRUE);
+  curs_set(0);
+  return menu_win;
 }
 
 static void print_menu(WINDOW *menu_win, int highlight) {
@@ -143,22 +122,21 @@ static void print_menu(WINDOW *menu_win, int highlight) {
   }
   werase(menu_win);
   for (int i = first; i < first + visible_count && i < n_choices; i++) {
-    struct stat st;
-    lstat(choices[i], &st);
+    PlatformFileKind kind = platform_file_kind(choices[i]);
     if ((highlight - 1) == i)
       wattron(menu_win, A_REVERSE);
 
-    switch (st.st_mode & S_IFMT) {
-    case S_IFLNK:
+    switch (kind) {
+    case PLATFORM_FILE_SYMLINK:
       mvwprintw(menu_win, y, x, "%d\t| {%s}", i, choices[i]);
       break;
-    case S_IFDIR:
+    case PLATFORM_FILE_DIRECTORY:
       mvwprintw(menu_win, y, x, "%d\t| [%s]", i, choices[i]);
       break;
-    case S_IFCHR:
+    case PLATFORM_FILE_CHAR_DEVICE:
       mvwprintw(menu_win, y, x, "%d\t| ..%s..", i, choices[i]);
       break;
-    case S_IFBLK:
+    case PLATFORM_FILE_BLOCK_DEVICE:
       mvwprintw(menu_win, y, x, "%d\t| _%s_", i, choices[i]);
       break;
     default:
@@ -240,32 +218,16 @@ static void handle_keyw(WINDOW *menu_win, int n_c, int *highlight) {
       else if (strncmp(input_buffer, "gg", 3) == 0)
         *highlight = 1;
       else if (strncmp(input_buffer, "vim", 3) == 0) {
+        char *argv_local[] = {"vim", NULL, NULL};
+        argv_local[1] = (input_buffer[3] == '!') ? "." : choices[*highlight - 1];
         endwin();
-        pid_t pid = fork();
-        if (pid == 0) {
-          if (input_buffer[3] == '!')
-            execlp("vim", "vim", ".", (char *)NULL);
-          else
-            execlp("vim", "vim", choices[*highlight - 1], (char *)NULL);
-          perror("execlp");
+        if (platform_spawn_and_wait(argv_local) == -1)
           handle_exit(EXIT_FAILURE);
-        } else if (pid > 0) {
-          int status;
-          waitpid(pid, &status, 0);
-          initscr();
-          clear();
-          noecho();
-          cbreak();
-          menu_win = newwin(LINES, COLS, starty, startx);
-          keypad(menu_win, TRUE);
-          load_directory(".");
-          print_menu(menu_win, *highlight);
-          refresh();
-          break;
-        } else {
-          perror("fork");
-          handle_exit(EXIT_FAILURE);
-        }
+        menu_win = recreate_menu_window();
+        load_directory(".");
+        print_menu(menu_win, *highlight);
+        refresh();
+        break;
       } else if (strncmp(input_buffer, "w", 2) == 0) {
         print_logo(menu_win);
       }
@@ -277,37 +239,16 @@ static void handle_keyw(WINDOW *menu_win, int n_c, int *highlight) {
 }
 
 void load_directory(const char *dirpath) {
-  DIR *dir;
-  struct dirent *entry;
-
-  if (chdir(dirpath) != 0) {
+  if (platform_change_directory(dirpath) != 0) {
     perror("chdir");
     return;
   }
   free_cbuf();
 
-  dir = opendir(".");
-  if (!dir) {
+  if (platform_list_directory(show_hidden_files, &choices, &n_choices) != 0) {
     perror("opendir");
     exit(EXIT_FAILURE);
   }
-  while ((entry = readdir(dir)) != NULL) {
-    // skip "." only; keep ".."
-    if (strcmp(entry->d_name, ".") == 0)
-      continue;
-    if (!show_hidden_files && entry->d_name[0] == '.' && entry->d_name[1] != '.')
-      continue;
-
-    char **tmp = realloc(choices, (n_choices + 1) * sizeof(*choices));
-    if (!tmp) {
-      perror("realloc");
-      exit(EXIT_FAILURE);
-    }
-    choices = tmp;
-    choices[n_choices++] = strdup(entry->d_name);
-  }
-  closedir(dir);
-
   // Sort with our custom comparator
   qsort(choices, n_choices, sizeof(*choices), cmp_choices);
 }
@@ -333,8 +274,7 @@ int main(int argc, char **argv) {
   if (argc < 2)
     load_directory(".");
   else {
-    struct stat st;
-    if (stat(argv[1], &st) == 0 && S_ISDIR(st.st_mode))
+    if (platform_is_directory(argv[1]))
       load_directory(argv[1]);
     else
       error("Cannot find selected directory");
@@ -376,37 +316,22 @@ int main(int argc, char **argv) {
     case 261:
     case 'l':
     case 10: {
-      struct stat st;
-      if (stat(choices[highlight - 1], &st) == 0 && S_ISDIR(st.st_mode)) {
+      if (platform_is_directory(choices[highlight - 1])) {
         load_directory(choices[highlight - 1]);
         highlight = 1;
         memset(info, 0, sizeof(info));
       } else {
-        if (is_text_file(choices[highlight - 1])) {
-          pid_t pid = fork();
-          if (pid == 0) {
-            endwin();
-            execlp("vim", "vim", choices[highlight - 1], (char *)NULL);
-            perror("execlp");
+        if (platform_is_text_file(choices[highlight - 1])) {
+          char *argv_local[] = {"vim", choices[highlight - 1], NULL};
+          endwin();
+          if (platform_spawn_and_wait(argv_local) == -1)
             handle_exit(EXIT_FAILURE);
-          } else if (pid > 0) {
-            int status;
-            waitpid(pid, &status, 0);
-            initscr();
-            clear();
-            noecho();
-            cbreak();
-            menu_win = newwin(LINES, COLS, starty, startx);
-            keypad(menu_win, TRUE);
-            print_menu(menu_win, highlight);
-            refresh();
-            break;
-          } else {
-            perror("fork");
-            handle_exit(EXIT_FAILURE);
-          }
+          menu_win = recreate_menu_window();
+          print_menu(menu_win, highlight);
+          refresh();
+          break;
         }
-        openFile(choices[highlight - 1]);
+        platform_open_path(choices[highlight - 1]);
       }
       break;
     }

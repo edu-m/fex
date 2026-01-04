@@ -2,6 +2,7 @@
 // Distributed under the Boost Software License, Version 1.0.
 // http://www.boost.org/LICENSE_1_0.txt
 
+#include "xdg.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
@@ -41,9 +42,10 @@ int findExecutable(const char* baseName, char* buf, size_t size)
         if (length > 0) {
             needTrailingSlash = (envPath[length-1] == '/') ? 0 : 1;
             if (length + baseNameLength + needTrailingSlash < size) {
-                strncpy(buf, envPath, length);
-                strncpy(buf + length, "/", needTrailingSlash);
-                strncpy(buf + length + needTrailingSlash, baseName, baseNameLength);
+                memcpy(buf, envPath, length);
+                if (needTrailingSlash)
+                    buf[length] = '/';
+                memcpy(buf + length + needTrailingSlash, baseName, baseNameLength);
                 buf[length + needTrailingSlash + baseNameLength] = '\0';
                 
                 if (access(buf, X_OK) == 0) {
@@ -89,11 +91,11 @@ void execProcess(const char* executable, char* const args[])
     _exit(1);
 }
 
-int openFile(char* path)
+int openFile(const char* path)
 {
     char xdgOpen[256];
     if (findExecutable("xdg-open", xdgOpen, sizeof(xdgOpen))) {
-        char* argv[] = {xdgOpen, path, NULL};
+        char* argv[] = {xdgOpen, (char *)path, NULL};
         pid_t pid = fork();
         if (pid == 0) {
             pid_t doubleFork = fork();
